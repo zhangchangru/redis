@@ -1,0 +1,71 @@
+ 所使用jar包：jedis-2.1.0.jar，commons-pool-1.5.4.jar
+ 
+ //redis工具类
+ 
+import redis.clients.jedis.Jedis;
+import redis.clients.jedis.JedisPool;
+import redis.clients.jedis.JedisPoolConfig;
+
+public class RedisUtil {
+	private static String ADDR = "127.0.0.1";//redis安装所在主机ip
+	private static int PORT = 6379;//端口号
+	private static int MAX_ACTIVE = 1024;//最大分配的链接数  
+	private static int MAX_IDLE = 200;//最大能够保持空闲状态的链接数
+	private static int MAX_WAIT = 10000;//最大等待时间
+	private static int TIMEOUT = 10000;//超时时间
+	private static boolean TEST_ON_BORROW = true;
+	private static JedisPool jedisPool = null;
+	static {
+		try {
+			JedisPoolConfig config = new JedisPoolConfig();
+			config.setMaxActive(MAX_ACTIVE);
+			config.setMaxIdle(MAX_IDLE);
+			config.setMaxWait(MAX_WAIT);
+			config.setTestOnBorrow(TEST_ON_BORROW);
+			jedisPool = new JedisPool(config, ADDR, PORT, TIMEOUT);
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+	}
+
+	public synchronized static Jedis getJedis() {
+		try {
+			if (jedisPool != null) {
+				Jedis resource = jedisPool.getResource();
+				return resource;
+			} else {
+				return null;
+			}
+		} catch (Exception e) {
+			e.printStackTrace();
+			return null;
+		}
+	}
+
+	public static void returnResource(final Jedis jedis) {
+		if (jedis != null) {
+			jedisPool.returnResource(jedis);
+		}
+	}
+}
+//demo
+
+public static void main(String[] args) {
+		Jedis jed = RedisUtil.getJedis();
+		jed.set("name", "Tom");
+		System.out.println(jed.get("name"));
+		Map<String, String> map = new HashMap<String, String>();
+		map.put("name", "Jerry");
+		map.put("age", "23");
+		map.put("sex", "Female");
+		jed.hmset("person", map);
+		System.out.println(jed.hmget("person", "age", "sex"));
+		jed.del("name");//删除
+		System.out.println(jed.get("name"));
+
+		jed.sadd("code", "demo1");
+		jed.sadd("code", "demo2");
+		jed.sadd("code", "demo3");
+		jed.sadd("code", "demo4");
+		System.out.println(jed.smembers("code"));// 返回set集合
+	}
